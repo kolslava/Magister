@@ -1,0 +1,26 @@
+# Файли, що генеруються системою збірки
+build/
+bin/
+lib/
+
+# Файли IDE
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# Файли компілятора
+*.o
+*.a
+*.so
+*.dll
+*.exe
+
+# Інше
+*.log
+*~
+
+*.pem
