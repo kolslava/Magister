@@ -13,6 +13,8 @@ git submodule add https://github.com/CrowCpp/Crow.git external/crow
 # HTTP Клієнт
 git submodule add https://github.com/libcpr/cpr.git external/cpr
 
+git submodule update --init --recursive
+
 cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..
 
 # Запусти збірку. -j$(nproc) використовує всі доступні ядра для прискорення.
