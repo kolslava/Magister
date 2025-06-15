@@ -1,13 +1,10 @@
 set(SHARED_LIB SharedApplib)
 
 add_library(${SHARED_LIB} STATIC
-    src/shared.cpp
+    src/Shared.cpp
+    src/Logger.cpp
+    src/JsonSerializer.cpp
 )
-
-#target_include_directories(${SHARED_LIB} PUBLIC
-#    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-#    $<INSTALL_INTERFACE:include>
-#)
 
 target_include_directories(${SHARED_LIB} PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
