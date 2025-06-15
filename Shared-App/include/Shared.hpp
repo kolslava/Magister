@@ -11,8 +11,6 @@
 #include <JsonSerializer.hpp>
 
 namespace SharedLib {
-    
-    
 
 } // namespace SharedLib
 

@@ -9,8 +9,12 @@
 
 #include <nlohmann/json.hpp>
 
-class JsonSerializer {
+namespace SharedLib {
+    
+    class JsonSerializer {
+        
+    };
 
-};
+} // namespace SharedLib
 
 #endif // JSONSERIALIZER_HPP
