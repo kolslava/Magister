@@ -8,8 +8,8 @@ namespace SharedLib {
         // Налаштування для Сервера
         std::string server_host = "0.0.0.0";
         int server_port = 18081;
-        std::string server_cert_path = "server.crt";
-        std::string server_key_path = "server.key";
+        std::string server_cert_path = "./cert/server.crt";
+        std::string server_key_path = "./cert/server.key";
 
         // Налаштування для Клієнта
         std::string client_target_host = "localhost";

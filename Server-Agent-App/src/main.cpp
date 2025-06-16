@@ -187,9 +187,9 @@ int main() {
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
-const std::string KEY_PUBLIC_PATH = "public.key";
-const std::string KEY_PRIVATE_PATH = "private.key";
-const std::string AGENT_CONFIG_PATH = "agent.conf";
+const std::string KEY_PUBLIC_PATH = "./agent-keys/public.key";
+const std::string KEY_PRIVATE_PATH = "./agent-keys/private.key";
+const std::string AGENT_CONFIG_PATH = "./agent-conf/agent.conf";
 
 void InitializeOpenSSL() {
     SSL_load_error_strings();
@@ -212,7 +212,7 @@ bool load_from_file(const std::string& path, std::string& data) {
 
 int main() {
     InitializeOpenSSL();
-    SharedLib::Logger::Init("AgentApp", "agent.log");
+    SharedLib::Logger::Init("AgentApp", "./logs/agent.log");
 
     try {
         SharedLib::AppConfig config;
@@ -277,11 +277,46 @@ int main() {
         }
 
         SharedLib::Logger::info("Agent is running. Agent ID: {}. Starting main work loop...", agent_id);
+
         while (true) {
-            // TODO: Логіка збору, підпису та відправки "відбитка"
+            SharedLib::Logger::info("--- Collecting and sending fingerprint ---");
+
+            // 1. Готуємо дані
+            SharedLib::JsonSerializer::FingerprintData data_to_sign;
+            data_to_sign.metrics["hostname"] = "agent-007";
+            data_to_sign.metrics["uptime_seconds"] = std::to_string(std::chrono::steady_clock::now().time_since_epoch().count() / 1000000000);
+            data_to_sign.timestamp = std::chrono::system_clock::now().time_since_epoch().count();
+        
+            std::string data_string = SharedLib::JsonSerializer::serialize(data_to_sign);
+
+            // 2. Підписуємо дані
+            std::string signature;
+            if (!SharedLib::SignatureManager::sign(privateKey, data_string, signature)) {
+                SharedLib::Logger::error("Could not sign data. Skipping this cycle.");
+                std::this_thread::sleep_for(std::chrono::seconds(15));
+                continue;
+            }
+        
+            // 3. Формуємо та відправляємо запит
+            SharedLib::JsonSerializer::FingerprintSubmitRequest request;
+            request.data = data_to_sign;
+            request.signature_base64 = signature;
+
+            std::string url = config.getClientTargetUrl("/api/v1/agents/" + std::to_string(agent_id) + "/fingerprints");
+            cpr::Response r = cpr::Post(cpr::Url{url},
+                                        cpr::Body{SharedLib::JsonSerializer::serialize(request)},
+                                        cpr::Header{{"Content-Type", "application/json"}},
+                                        cpr::VerifySsl{config.client_verify_ssl});
+
+            if (r.status_code == 200) {
+                SharedLib::Logger::info("Fingerprint successfully submitted.");
+            } else {
+                SharedLib::Logger::error("Fingerprint submission failed! Status: {}, Body: {}", r.status_code, r.text);
+            }
+
+            SharedLib::Logger::info("--- Cycle finished. Waiting for 15 seconds... ---");
             std::this_thread::sleep_for(std::chrono::seconds(15));
         }
-
     } catch (const std::exception& e) {
         SharedLib::Logger::critical("A critical error occurred in AgentApp: {}", e.what());
         return 1;

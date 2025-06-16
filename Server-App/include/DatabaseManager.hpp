@@ -25,6 +25,13 @@ struct Agent {
     std::string created_at;
 };
 
+struct Fingerprint {
+    int id = -1;
+    int agent_id;
+    std::string data; // Будемо зберігати як JSON-рядок
+    std::string created_at;
+};
+
 // TODO: В майбутньому тут будуть інші структури (Fingerprint, Alert і т.д.)
 
 /**
@@ -47,6 +54,8 @@ public:
      * @return Унікальний ID, присвоєний агенту в БД.
      */
     int addAgent(const Agent& agent);
+
+    void addFingerprint(const Fingerprint& fp);
 
     /**
      * @brief Отримує публічний ключ агента за його ID.

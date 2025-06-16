@@ -14,6 +14,12 @@ inline auto create_storage(const std::string& path) {
             make_column("os_version", &Agent::os_version),
             make_column("public_key", &Agent::public_key),
             make_column("created_at", &Agent::created_at, default_value(current_timestamp()))
+        ),
+        make_table("fingerprints",
+            make_column("id", &Fingerprint::id, primary_key().autoincrement()),
+            make_column("agent_id", &Fingerprint::agent_id),
+            make_column("data", &Fingerprint::data),
+            make_column("created_at", &Fingerprint::created_at, default_value(current_timestamp()))
         )
         // TODO: В майбутньому тут будуть інші таблиці (fingerprints, alerts)
     );
@@ -66,4 +72,8 @@ std::optional<std::string> DatabaseManager::getAgentPublicKey(int agent_id) {
         return agent->public_key;
     }
     return std::nullopt;
+}
+
+void DatabaseManager::addFingerprint(const Fingerprint& fp) {
+    pimpl->storage.insert(fp);
 }

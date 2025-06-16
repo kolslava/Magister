@@ -1,4 +1,4 @@
-#include <iostream>
+/*#include <iostream>
 
 #include <Shared.hpp>
 
@@ -8,14 +8,6 @@
 int main(int argc, char* argv[]) {
 
     SharedLib::Logger::Init("ServerApp", "./logs/server.log");
-
-    // --- Тестові повідомлення ---
-    SharedLib::Logger::trace("This is a trace message.");
-    SharedLib::Logger::info("Server is starting...");
-    SharedLib::Logger::warn("This is a warning.");
-    SharedLib::Logger::error("This is an error message!");
-    SharedLib::Logger::critical("This is a critical error!");
-    // -------------------------
 
     // Створюємо екземпляр нашої вкладеної структури
     SharedLib::JsonSerializer::Test original_data;
@@ -103,4 +95,60 @@ int main(int argc, char* argv[]) {
     }
 
     return 0;
+}*/
+
+#include <iostream>
+#include <exception>
+
+// Підключаємо заголовки для функцій ініціалізації OpenSSL
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+
+// Наші власні класи-менеджери
+#include <Shared.hpp>
+
+#include <WebServer.hpp>
+#include <DatabaseManager.hpp>
+
+/**
+ * @brief Виконує одноразову ініціалізацію бібліотеки OpenSSL.
+ * Має бути викликана на самому початку роботи програми.
+ */
+void InitializeOpenSSL() {
+    SSL_load_error_strings();
+    OpenSSL_add_ssl_algorithms();
+}
+
+int main() {
+    // 1. Ініціалізуємо системні бібліотеки
+    InitializeOpenSSL();
+
+    // 2. Ініціалізуємо наш власний логер
+    // Всі подальші повідомлення будуть йти в консоль та у файл server.log
+    SharedLib::Logger::Init("ServerApp", "./logs/server.log");
+
+    try {
+        // 3. Створюємо об'єкт конфігурації
+        SharedLib::AppConfig config;
+
+        // 4. Створюємо екземпляр нашого веб-сервера, передаючи йому налаштування
+        WebServer server(
+            config.server_port,
+            config.server_cert_path,
+            config.server_key_path
+        );
+
+        // 5. Запускаємо сервер. Цей виклик заблокує потік
+        // і буде обробляти вхідні запити, поки програма не буде закрита.
+        server.run();
+
+    } catch (const std::exception& e) {
+        // Ловимо будь-які критичні помилки під час ініціалізації
+        // і записуємо їх у лог перед завершенням роботи.
+        SharedLib::Logger::critical("A critical error occurred and the server is shutting down: {}", e.what());
+        return 1; // Повертаємо код помилки
+    }
+
+    SharedLib::Logger::info("Server has shut down gracefully.");
+    return 0; // Успішне завершення
 }

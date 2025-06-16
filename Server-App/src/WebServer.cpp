@@ -4,9 +4,8 @@
 
 #include <crow.h>
 #include <DatabaseManager.hpp>
-#include <JsonSerializer.hpp>
-#include <Config.hpp>
-#include <Logger.hpp>
+
+#include <Shared.hpp>
 
 /**
  * @brief Внутрішній клас реалізації (патерн PIMPL).
@@ -40,24 +39,6 @@ private:
         CROW_ROUTE(m_app, "/")([](){
             SharedLib::Logger::info("GET / request received.");
             return "Hello, this is a basic HTTPS server!";
-        });
-
-        
-        CROW_ROUTE(m_app, "/health")([](){
-            SharedLib::Logger::info("GET /health request received.");
-
-            // 1. Створюємо нашу власну, просту структуру
-            SharedLib::JsonSerializer::HealthStatus status;
-            status.status = "ok";
-            status.service = "DeviceProfiler Server";
-
-            // 2. Викликаємо наш серіалізатор, щоб отримати рядок JSON
-            std::string json_response = SharedLib::JsonSerializer::serialize(status);
-
-            // 3. Відправляємо відповідь
-            crow::response res(200, json_response);
-            res.add_header("Content-Type", "application/json");
-            return res;
         });
 
         // Ендпоінт для реєстрації нового агента
@@ -96,6 +77,51 @@ private:
                 return crow::response(500, "Internal Server Error");
             }
         });
+
+        // НОВИЙ ЕНДПОІНТ для прийому відбитків
+        CROW_ROUTE(m_app, "/api/v1/agents/<int>/fingerprints").methods("POST"_method)
+        ([](const crow::request& req, int agent_id){
+            SharedLib::Logger::info("Received fingerprint from agent ID: {}", agent_id);
+
+            auto& db = DatabaseManager::get();
+
+            // 1. Дістаємо публічний ключ агента з БД
+            auto pubKeyOpt = db.getAgentPublicKey(agent_id);
+            if (!pubKeyOpt) {
+                return crow::response(404, "Agent not found");
+            }
+
+            // 2. Десеріалізуємо запит
+            auto requestOpt = SharedLib::JsonSerializer::deserializeFingerprintRequest(req.body);
+            if (!requestOpt) {
+                return crow::response(400, "Bad Request: Invalid JSON");
+            }
+            auto& request = *requestOpt;
+
+            // 3. Готуємо дані для перевірки підпису (це серіалізована частина 'data')
+            std::string data_to_verify = SharedLib::JsonSerializer::serialize(request.data);
+
+            // 4. Перевіряємо підпис
+            
+            bool is_valid = SharedLib::SignatureManager::verify(*pubKeyOpt, data_to_verify, request.signature_base64);
+
+            if (is_valid) {
+                SharedLib::Logger::info("Signature for agent {} is VALID.", agent_id);
+                
+                // Зберігаємо відбиток у БД
+                Fingerprint fp_to_db;
+                fp_to_db.agent_id = agent_id;
+                fp_to_db.data = SharedLib::JsonSerializer::serialize(request.data); // Зберігаємо як JSON
+                db.addFingerprint(fp_to_db);
+
+                SharedLib::Logger::info("Fingerprint data saved to DB.");
+                return crow::response(200, "Fingerprint accepted");
+            } else {
+                SharedLib::Logger::warn("Signature for agent {} is INVALID!", agent_id);
+                return crow::response(401, "Unauthorized: Invalid signature");
+            }
+        });
+
     }
 
     crow::SimpleApp m_app;
