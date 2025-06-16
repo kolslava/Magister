@@ -50,6 +50,28 @@ namespace nlohmann {
         j.at("data").get_to(req.data);
         j.at("signature").get_to(req.signature_base64);
     }
+
+    // Для AgentRegisterRequest
+    void to_json(json& j, const SharedLib::JsonSerializer::AgentRegisterRequest& req) {
+        j = json{
+            {"hostname", req.hostname},
+            {"os_version", req.os_version},
+            {"public_key", req.public_key_pem}
+        };
+    }
+    void from_json(const json& j, SharedLib::JsonSerializer::AgentRegisterRequest& req) {
+        j.at("hostname").get_to(req.hostname);
+        j.at("os_version").get_to(req.os_version);
+        j.at("public_key").get_to(req.public_key_pem);
+    }
+
+    // Для AgentRegisterResponse
+    void to_json(json& j, const SharedLib::JsonSerializer::AgentRegisterResponse& res) {
+        j = json{{"agent_id", res.agent_id}};
+    }
+    void from_json(const json& j, SharedLib::JsonSerializer::AgentRegisterResponse& res) {
+        j.at("agent_id").get_to(res.agent_id);
+    }
 }
 
 namespace SharedLib {
@@ -90,5 +112,24 @@ namespace SharedLib {
             return std::nullopt;
         }
     }
+
+    // Для реєстрації
+    std::string JsonSerializer::serialize(const AgentRegisterRequest& request) { return nlohmann::json(request).dump(4); }
+    std::optional<JsonSerializer::AgentRegisterRequest> JsonSerializer::deserializeRegisterRequest(const std::string& jsonString) {
+        try { return nlohmann::json::parse(jsonString).get<AgentRegisterRequest>(); }
+        catch (const nlohmann::json::exception& e) {
+            Logger::error("JSON deserialization failed for AgentRegisterRequest: {}", e.what());
+            return std::nullopt;
+        }
+    }
+    std::string JsonSerializer::serialize(const AgentRegisterResponse& response) { return nlohmann::json(response).dump(4); }
+    std::optional<JsonSerializer::AgentRegisterResponse> JsonSerializer::deserializeRegisterResponse(const std::string& jsonString) {
+        try { return nlohmann::json::parse(jsonString).get<AgentRegisterResponse>(); }
+        catch (const nlohmann::json::exception& e) {
+            Logger::error("JSON deserialization failed for AgentRegisterResponse: {}", e.what());
+            return std::nullopt;
+        }
+    }
+
 
 } // namespace SharedLib

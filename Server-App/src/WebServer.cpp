@@ -3,9 +3,9 @@
 // Підключаємо всі необхідні залежності ТІЛЬКИ ТУТ
 
 #include <crow.h>
-//#include <DatabaseManager.hpp>
+#include <DatabaseManager.hpp>
 #include <JsonSerializer.hpp>
-//#include <Config.hpp>
+#include <Config.hpp>
 #include <Logger.hpp>
 
 /**
@@ -58,6 +58,43 @@ private:
             crow::response res(200, json_response);
             res.add_header("Content-Type", "application/json");
             return res;
+        });
+
+        // Ендпоінт для реєстрації нового агента
+        CROW_ROUTE(m_app, "/api/v1/agents").methods("POST"_method)
+        // ВИПРАВЛЕНО: Лямбда більше не захоплює [&db], бо він їй не потрібен
+        ([](const crow::request& req){
+            SharedLib::Logger::info("Received new agent registration request from {}", req.remote_ip_address);
+
+            auto regRequestOpt = SharedLib::JsonSerializer::deserializeRegisterRequest(req.body);
+            if (!regRequestOpt) {
+                SharedLib::Logger::error("Bad registration request from {}: invalid JSON.", req.remote_ip_address);
+                return crow::response(400, "Bad Request: Invalid JSON");
+            }
+            auto& regRequest = *regRequestOpt;
+
+            Agent agent_to_db; // Припускаємо, що struct Agent визначено у вашому DatabaseManager.hpp
+            agent_to_db.hostname = regRequest.hostname;
+            agent_to_db.os_version = regRequest.os_version;
+            agent_to_db.public_key = regRequest.public_key_pem;
+            
+            try {
+                // ВИПРАВЛЕНО: Отримуємо доступ до БД через статичний метод get()
+                auto& db = DatabaseManager::get();
+                int new_id = db.addAgent(agent_to_db);
+
+                SharedLib::Logger::info("Successfully registered new agent '{}' from {} with ID: {}", 
+                                     agent_to_db.hostname, req.remote_ip_address, new_id);
+
+                SharedLib::JsonSerializer::AgentRegisterResponse response{ (long long)new_id };
+                crow::response res(200, SharedLib::JsonSerializer::serialize(response));
+                res.add_header("Content-Type", "application/json");
+                return res;
+
+            } catch (const std::exception& e) {
+                SharedLib::Logger::error("Failed to insert agent from {} into database: {}", req.remote_ip_address, e.what());
+                return crow::response(500, "Internal Server Error");
+            }
         });
     }
 
