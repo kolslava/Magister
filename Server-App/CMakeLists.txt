@@ -19,8 +19,6 @@ target_include_directories(${SERVER_APP} PRIVATE
 
 target_link_libraries(${SERVER_APP} 
     PUBLIC SharedApplib
-    OpenSSL::SSL
-    OpenSSL::Crypto
     PRIVATE sqlite_orm::sqlite_orm 
     PRIVATE SQLite::SQLite3
 )

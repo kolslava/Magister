@@ -1,4 +1,4 @@
-#include <iostream>
+/*#include <iostream>
 
 #include <Shared.hpp>
 
@@ -99,6 +99,75 @@ int main(int argc, char* argv[]) {
     }
 
     std::cout << "Hello, world from AgentAPP\n";
+
+    return 0;
+}*/
+
+
+#include <Shared.hpp>
+
+#include <iostream>
+
+// Підключаємо заголовки для функцій ініціалізації OpenSSL
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+
+/**
+ * @brief Виконує одноразову ініціалізацію бібліотеки OpenSSL.
+ * Має бути викликана на самому початку роботи програми.
+ */
+void InitializeOpenSSL() {
+    SSL_load_error_strings();      // Завантажуємо рядки помилок
+    OpenSSL_add_ssl_algorithms();  // Реєструємо реалізації шифрів та дайджестів
+}
+
+int main() {
+    InitializeOpenSSL();
+    SharedLib::Logger::Init("CryptoTest", "test.log");
+
+    fmt::print("--- КРОК 1: Генерація ключів ---\n");
+    std::string privKey, pubKey;
+    if (!SharedLib::CryptoHelper::generateRsaKeyPair(privKey, pubKey)) {
+        SharedLib::Logger::critical("Помилка генерації ключів!");
+        return 1;
+    }
+    SharedLib::Logger::info("Пара ключів успішно згенерована.");
+    SharedLib::Logger::info("\nПРИВАТНИЙ КЛЮЧ (PEM):\n{}\n", privKey);
+    SharedLib::Logger::info("ПУБЛІЧНИЙ КЛЮЧ (PEM):\n{}\n", pubKey);
+
+
+    SharedLib::Logger::info("\n--- КРОК 2: Підготовка та підпис даних ---\n");
+    SharedLib::JsonSerializer::FingerprintData data_to_sign;
+    data_to_sign.metrics["hostname"] = "test-pc";
+    data_to_sign.metrics["ip"] = "192.168.1.10";
+    data_to_sign.timestamp = std::chrono::system_clock::now().time_since_epoch().count();
+    
+    std::string data_string = SharedLib::JsonSerializer::serialize(data_to_sign);
+    SharedLib::Logger::info("Дані, які ми будемо підписувати (у форматі JSON):");
+    SharedLib::Logger::info("{}\n", data_string);
+
+    std::string signature;
+    if (!SharedLib::SignatureManager::sign(privKey, data_string, signature)) {
+        SharedLib::Logger::critical("Помилка створення підпису!");
+        return 1;
+    }
+    SharedLib::Logger::info("Підпис успішно створено.");
+    SharedLib::Logger::info("\nЦИФРОВИЙ ПІДПИС (у форматі Base64):\n{}\n", signature);
+
+
+    SharedLib::Logger::info("\n--- КРОК 3: Перевірка підпису (симуляція роботи сервера) ---\n");
+    SharedLib::Logger::info("Перевіряємо підпис з правильними даними...");
+    bool is_valid = SharedLib::SignatureManager::verify(pubKey, data_string, signature);
+
+    if (is_valid) {
+        SharedLib::Logger::info("\n========================================\n");
+        SharedLib::Logger::info("УСПІХ: Підпис валідний! Сервер довіряє цим даним.");
+        SharedLib::Logger::info("========================================\n");
+    } else {
+        SharedLib::Logger::info("\n========================================\n");
+        SharedLib::Logger::error("ПОМИЛКА: Підпис не валідний!");
+        SharedLib::Logger::info("========================================\n");
+    }
 
     return 0;
 }

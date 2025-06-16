@@ -25,6 +25,31 @@ namespace nlohmann {
         j.at("status").get_to(data.status);
         j.at("service").get_to(data.service);
     }
+
+    // Для FingerprintData
+    void to_json(json& j, const SharedLib::JsonSerializer::FingerprintData& data) {
+        j = json{
+            {"metrics", data.metrics},
+            {"timestamp", data.timestamp}
+        };
+    }
+    void from_json(const json& j, SharedLib::JsonSerializer::FingerprintData& data) {
+        j.at("metrics").get_to(data.metrics);
+        j.at("timestamp").get_to(data.timestamp);
+    }
+
+    // Для FingerprintSubmitRequest
+    void to_json(json& j, const SharedLib::JsonSerializer::FingerprintSubmitRequest& req) {
+        j = json{
+            {"data", req.data},
+            {"signature", req.signature_base64}
+        };
+    }
+
+    void from_json(const json& j, SharedLib::JsonSerializer::FingerprintSubmitRequest& req) {
+        j.at("data").get_to(req.data);
+        j.at("signature").get_to(req.signature_base64);
+    }
 }
 
 namespace SharedLib {
@@ -54,4 +79,16 @@ namespace SharedLib {
         }
     }
     
+    // Для відбитка
+    std::string JsonSerializer::serialize(const FingerprintData& data) { return nlohmann::json(data).dump(); }
+    std::string JsonSerializer::serialize(const FingerprintSubmitRequest& request) { return nlohmann::json(request).dump(4); }
+
+    std::optional<JsonSerializer::FingerprintSubmitRequest> JsonSerializer::deserializeFingerprintRequest(const std::string& jsonString) {
+        try { return nlohmann::json::parse(jsonString).get<FingerprintSubmitRequest>(); }
+        catch (const nlohmann::json::exception& e) {
+            Logger::error("JSON deserialization failed for FingerprintSubmitRequest: {}", e.what());
+            return std::nullopt;
+        }
+    }
+
 } // namespace SharedLib

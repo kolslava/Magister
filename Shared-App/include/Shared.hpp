@@ -11,6 +11,9 @@
 #include <JsonSerializer.hpp>
 #include <Config.hpp>
 
+#include <CryptoHelper.hpp>
+#include <SignatureManager.hpp>
+
 namespace SharedLib {
 
 } // namespace SharedLib
