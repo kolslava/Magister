@@ -6,7 +6,7 @@
 
 int main(int argc, char* argv[]) {
 
-    SharedLib::Logger::Init("AgentApp", "agent.log");
+    SharedLib::Logger::Init("AgentApp", "./logs/agent.log");
 
     // --- Тестові повідомлення ---
     SharedLib::Logger::trace("This is a trace message.");

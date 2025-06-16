@@ -2,8 +2,7 @@ set(SERVER_APP ServerApp)
 
 set(SERVER_APP_SOURCES 
     src/main.cpp
-
-    include/DatabaseManager.hpp
+    src/DatabaseManager.cpp
 )
 
 add_executable(${SERVER_APP} ${SERVER_APP_SOURCES})

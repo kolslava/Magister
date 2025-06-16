@@ -6,7 +6,7 @@
 
 int main(int argc, char* argv[]) {
 
-    SharedLib::Logger::Init("ServerApp", "server.log");
+    SharedLib::Logger::Init("ServerApp", "./logs/server.log");
 
     // --- Тестові повідомлення ---
     SharedLib::Logger::trace("This is a trace message.");
@@ -67,6 +67,18 @@ int main(int argc, char* argv[]) {
     }
 
     std::cout << "Hello, world from ServerAPP\n";
+
+    auto& db = DatabaseManager::get();
+
+    // Створюємо об'єкт для збереження в БД
+    Agent agent_to_db{
+        -1,
+        "Test_HOSTNAME",
+        "OS_VERsion",
+        "PUBLIC_KEY"
+    };
+
+    int new_id = db.addAgent(agent_to_db);
 
     return 0;
 }
