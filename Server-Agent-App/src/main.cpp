@@ -4,6 +4,8 @@
 
 #include <cpr/cpr.h>
 
+
+
 int main(int argc, char* argv[]) {
 
     SharedLib::Logger::Init("AgentApp", "./logs/agent.log");
@@ -66,6 +68,35 @@ int main(int argc, char* argv[]) {
         SharedLib::Logger::error("FAILURE: Deserialization succeeded when it should have failed!");
     }
 
+    // 1. Ініціалізуємо логер та конфігурацію
+    SharedLib::AppConfig config;
+
+    // 2. Формуємо URL до тестового ендпоінта /health
+    std::string url = config.getClientTargetUrl("/health");
+    SharedLib::Logger::info("Sending request to test server health at: {}", url);
+
+    // 3. Робимо GET-запит
+    cpr::Response r = cpr::Get(cpr::Url{url},
+                               // Цей прапорець потрібен для самопідписаних сертифікатів
+                               cpr::VerifySsl{config.client_verify_ssl});
+
+    // 4. Аналізуємо відповідь
+    if (r.status_code == 200) {
+        SharedLib::Logger::info("Server response OK (200).");
+        SharedLib::Logger::info("Response body: {}", r.text);
+
+        // Спробуємо розпарсити відповідь
+        auto status_opt = SharedLib::JsonSerializer::deserializeHealthStatus(r.text);
+        if(status_opt) {
+            SharedLib::Logger::info("Successfully deserialized health status: status='{}', service='{}'", 
+                                 status_opt->status, status_opt->service);
+        } else {
+            SharedLib::Logger::error("Failed to deserialize health status from server response.");
+        }
+
+    } else {
+        SharedLib::Logger::error("Request failed! Status code: {}. Error: {}", r.status_code, r.error.message);
+    }
 
     std::cout << "Hello, world from AgentAPP\n";
 

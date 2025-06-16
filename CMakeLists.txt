@@ -11,6 +11,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/../bin)
 
 # Шукаємо системну бібліотеку SQLite3, вона потрібна для sqlite_orm
 find_package(SQLite3 REQUIRED)
+find_package(OpenSSL REQUIRED)
 
 # Додаємо сабмодулі
 add_subdirectory(external/json)

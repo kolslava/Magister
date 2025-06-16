@@ -3,6 +3,7 @@
 #include <Shared.hpp>
 
 #include <DatabaseManager.hpp>
+#include <WebServer.hpp>
 
 int main(int argc, char* argv[]) {
 
@@ -79,6 +80,27 @@ int main(int argc, char* argv[]) {
     };
 
     int new_id = db.addAgent(agent_to_db);
+
+    try {
+        // 1. Створюємо конфігурацію
+        SharedLib::AppConfig config;
+
+        // 2. Створюємо екземпляр сервера з налаштуваннями
+        WebServer server(
+            config.server_port, 
+            config.server_cert_path, 
+            config.server_key_path
+        );
+
+        // 3. Запускаємо сервер
+        server.run();
+
+    } catch (const std::exception& e) {
+        //std::cerr << "A critical error occurred: " << e.what() << std::endl;
+        // Можна також використати логер, якщо він встиг ініціалізуватися
+        SharedLib::Logger::critical("A critical error occurred: {}", e.what());
+        return 1;
+    }
 
     return 0;
 }

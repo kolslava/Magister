@@ -12,6 +12,19 @@ namespace nlohmann {
     void from_json(const json& j, SharedLib::JsonSerializer::Test& req) {
         j.at("name").get_to(req.name);
     }
+
+    // НОВА реалізація для HealthStatus
+    void to_json(json& j, const SharedLib::JsonSerializer::HealthStatus& data) {
+        j = json{
+            {"status", data.status},
+            {"service", data.service}
+        };
+    }
+
+    void from_json(const json& j, SharedLib::JsonSerializer::HealthStatus& data) {
+        j.at("status").get_to(data.status);
+        j.at("service").get_to(data.service);
+    }
 }
 
 namespace SharedLib {
@@ -24,6 +37,19 @@ namespace SharedLib {
         try { return nlohmann::json::parse(jsonString).get<Test>(); }
         catch (const nlohmann::json::exception& e) {
             Logger::error("JSON deserialization failed for Test: {}", e.what());
+            return std::nullopt;
+        }
+    }
+
+    // --- НОВІ методи для HealthStatus ---
+    std::string JsonSerializer::serialize(const HealthStatus& data) {
+        return nlohmann::json(data).dump(4);
+    }
+
+    std::optional<JsonSerializer::HealthStatus> JsonSerializer::deserializeHealthStatus(const std::string& jsonString) {
+        try { return nlohmann::json::parse(jsonString).get<HealthStatus>(); }
+        catch (const nlohmann::json::exception& e) {
+            Logger::error("JSON deserialization failed for HealthStatus: {}", e.what());
             return std::nullopt;
         }
     }

@@ -9,6 +9,7 @@
 
 #include <Logger.hpp>
 #include <JsonSerializer.hpp>
+#include <Config.hpp>
 
 namespace SharedLib {
 

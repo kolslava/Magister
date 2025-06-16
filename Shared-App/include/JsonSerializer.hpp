@@ -22,10 +22,21 @@ namespace SharedLib {
             std::string name;
         };
 
+        // НОВА СТРУКТУРА для відповіді /health
+        struct HealthStatus {
+            std::string status;
+            std::string service;
+        };
+
         // --- Методи для серіалізації/десеріалізації ---
 
         static std::string serialize(const Test& request);
         static std::optional<Test> deserializeTest(const std::string& jsonString);
+
+        // НОВІ МЕТОДИ для HealthStatus
+        static std::string serialize(const HealthStatus& data);
+        // Десеріалізатор нам поки не потрібен, але можемо додати для повноти
+        static std::optional<HealthStatus> deserializeHealthStatus(const std::string& jsonString);
     };
 
 } // namespace SharedLib

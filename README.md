@@ -19,3 +19,6 @@ cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..
 
 # Запусти збірку. -j$(nproc) використовує всі доступні ядра для прискорення.
 make -j$(nproc)
+
+# Створення SSL-сертифікатів
+openssl req -x509 -newkey rsa:2048 -keyout server.key -out server.crt -sha256 -days 365 -nodes -subj "/CN=localhost"
