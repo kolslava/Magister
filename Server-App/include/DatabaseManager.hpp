@@ -17,68 +17,47 @@
 // --- Структури даних, що відображають таблиці в БД ---
 // Ми визначаємо їх тут, щоб вони були доступні для використання в сервері.
 
+// Структури даних, що відображають таблиці в БД
 struct Agent {
     int id = -1;
     std::string hostname;
     std::string os_version;
     std::string public_key;
+    std::string enrollment_token;
+    bool is_active = false;
     std::string created_at;
 };
 
 struct Fingerprint {
     int id = -1;
     int agent_id;
-    std::string data; // Будемо зберігати як JSON-рядок
+    std::string data; // Зберігаємо як JSON-рядок
     std::string created_at;
 };
 
-// TODO: В майбутньому тут будуть інші структури (Fingerprint, Alert і т.д.)
-
-/**
- * @brief Клас-одинак для керування базою даних.
- * Надає єдину точку доступу до БД для всього застосунку.
- */
-
 class DatabaseManager {
 public:
-    // --- Публічний інтерфейс ---
-
-    /**
-     * @brief Отримує єдиний екземпляр менеджера БД.
-     */
     static DatabaseManager& get();
-
-    /**
-     * @brief Додає нового агента в базу даних.
-     * @param agent Об'єкт агента для збереження.
-     * @return Унікальний ID, присвоєний агенту в БД.
-     */
-    int addAgent(const Agent& agent);
-
-    void addFingerprint(const Fingerprint& fp);
-
-    /**
-     * @brief Отримує публічний ключ агента за його ID.
-     * @param agent_id ID агента.
-     * @return Рядок з ключем, або std::nullopt, якщо агента не знайдено.
-     */
+    
+    // Створює "запрошення" для нового агента
+    std::string generateEnrollmentToken(const std::string& description);
+    
+    // Активує агента за токеном, оновлюючи його дані
+    std::optional<int> activateAgent(const std::string& token, const std::string& publicKey, const std::string& hostname, const std::string& osVersion);
+    
+    // Отримує ключ для перевірки підпису
     std::optional<std::string> getAgentPublicKey(int agent_id);
 
-    // TODO: В майбутньому тут будуть інші методи:
-    // void addFingerprint(int agent_id, const std::string& fingerprint);
-    // void addAlert(int agent_id, const std::string& alert_message);
-
-
-    // --- Заборона копіювання та присвоєння для патерну Singleton ---
+    // Зберігає новий "відбиток"
+    void addFingerprint(const Fingerprint& fp);
+    
     DatabaseManager(const DatabaseManager&) = delete;
     DatabaseManager& operator=(const DatabaseManager&) = delete;
 
 private:
-    // --- Реалізація PIMPL ---
-    class Impl; // Випереджаюча декларація внутрішнього класу
-    std::unique_ptr<Impl> pimpl; // Вказівник на реалізацію
+    class Impl;
+    std::unique_ptr<Impl> pimpl;
 
-    // Конструктор та деструктор приватні для Singleton
     DatabaseManager();
     ~DatabaseManager();
 };

@@ -35,7 +35,7 @@ public:
 private:
     // Тут ми визначаємо всі наші API "ручки"
     void setupRoutes() {
-        // Найпростіший маршрут
+        /*// Найпростіший маршрут
         CROW_ROUTE(m_app, "/")([](){
             SharedLib::Logger::info("GET / request received.");
             return "Hello, this is a basic HTTPS server!";
@@ -119,6 +119,43 @@ private:
             } else {
                 SharedLib::Logger::warn("Signature for agent {} is INVALID!", agent_id);
                 return crow::response(401, "Unauthorized: Invalid signature");
+            }
+        });*/
+
+        // 1. Ендпоінт для АДМІНІСТРАТОРА для створення токену
+        CROW_ROUTE(m_app, "/api/v1/enroll").methods("POST"_method)
+        ([](){
+            // Отримуємо доступ до БД через Singleton
+            auto& db = DatabaseManager::get();
+            std::string token = db.generateEnrollmentToken("New Agent");
+            SharedLib::Logger::info("Generated new enrollment token: {}", token);
+
+            // Створюємо об'єкт відповіді і серіалізуємо його через наш клас
+            SharedLib::JsonSerializer::EnrollmentTokenResponse response{token};
+            return crow::response(200, SharedLib::JsonSerializer::serialize(response));
+        });
+
+        // 2. Ендпоінт для АГЕНТА для реєстрації з токеном
+        CROW_ROUTE(m_app, "/api/v1/register").methods("POST"_method)
+        ([](const crow::request& req){
+            auto regRequestOpt = SharedLib::JsonSerializer::deserializeRegisterRequest(req.body);
+            if (!regRequestOpt) return crow::response(400, "Bad Request");
+
+            std::string token;
+            const auto& auth_header = req.get_header_value("Authorization");
+            if (auth_header.rfind("Bearer ", 0) == 0) {
+                token = auth_header.substr(7);
+            }
+            if (token.empty()) return crow::response(401, "Token not provided");
+
+            auto& db = DatabaseManager::get();
+            auto agentIdOpt = db.activateAgent(token, regRequestOpt->public_key_pem, regRequestOpt->hostname, regRequestOpt->os_version);
+            
+            if (agentIdOpt) {
+                SharedLib::JsonSerializer::AgentRegisterResponse response{ (long long)*agentIdOpt };
+                return crow::response(200, SharedLib::JsonSerializer::serialize(response));
+            } else {
+                return crow::response(403, "Forbidden: Invalid or used token");
             }
         });
 

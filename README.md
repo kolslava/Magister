@@ -22,3 +22,5 @@ make -j$(nproc)
 
 # Створення SSL-сертифікатів
 openssl req -x509 -newkey rsa:2048 -keyout server.key -out server.crt -sha256 -days 365 -nodes -subj "/CN=localhost"
+
+curl -k -X POST https://localhost:18081/api/v1/enroll

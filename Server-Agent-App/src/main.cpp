@@ -191,30 +191,45 @@ const std::string KEY_PUBLIC_PATH = "./agent-keys/public.key";
 const std::string KEY_PRIVATE_PATH = "./agent-keys/private.key";
 const std::string AGENT_CONFIG_PATH = "./agent-conf/agent.conf";
 
+/**
+ * @brief Виконує одноразову ініціалізацію бібліотеки OpenSSL.
+ */
 void InitializeOpenSSL() {
     SSL_load_error_strings();
     OpenSSL_add_ssl_algorithms();
 }
 
+/**
+ * @brief Допоміжна функція для збереження даних у файл.
+ */
 bool save_to_file(const std::string& path, const std::string& data) {
     std::ofstream out(path);
-    if (!out) { SharedLib::Logger::error("Failed to open file for writing: {}", path); return false; }
+    if (!out) {
+        SharedLib::Logger::error("Failed to open file for writing: {}", path);
+        return false;
+    }
     out << data;
     return true;
 }
 
+/**
+ * @brief Допоміжна функція для читання даних з файлу.
+ */
 bool load_from_file(const std::string& path, std::string& data) {
     std::ifstream in(path);
-    if (!in) { return false; }
+    if (!in) {
+        return false; // Це нормально, якщо файл ще не існує
+    }
     data.assign((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
     return true;
 }
+
 
 int main() {
     InitializeOpenSSL();
     SharedLib::Logger::Init("AgentApp", "./logs/agent.log");
 
-    try {
+    /*try {
         SharedLib::AppConfig config;
         long long agent_id = -1;
         std::string privateKey;
@@ -317,6 +332,96 @@ int main() {
             SharedLib::Logger::info("--- Cycle finished. Waiting for 15 seconds... ---");
             std::this_thread::sleep_for(std::chrono::seconds(15));
         }
+    } catch (const std::exception& e) {
+        SharedLib::Logger::critical("A critical error occurred in AgentApp: {}", e.what());
+        return 1;
+    }
+    return 0;*/
+
+    try {
+        SharedLib::AppConfig app_config;
+        long long agent_id = -1;
+        std::string privateKey;
+
+        // --- ЕТАП 1: ЧИТАННЯ КОНФІГУРАЦІЇ ---
+        std::string config_content;
+        load_from_file(AGENT_CONFIG_PATH, config_content);
+        
+        auto agent_config_opt = SharedLib::JsonSerializer::deserializeAgentConfig(config_content);
+        if (!agent_config_opt) {
+            SharedLib::Logger::critical("Failed to parse config file '{}'. Please fix or delete it.", AGENT_CONFIG_PATH);
+            return 1;
+        }
+        auto agent_config = *agent_config_opt;
+        
+        // --- ЕТАП 2: ПЕРЕВІРКА РЕЄСТРАЦІЇ ---
+        if (agent_config.agent_id) {
+            agent_id = *agent_config.agent_id;
+            SharedLib::Logger::info("Agent is already registered with ID: {}", agent_id);
+            if (!load_from_file(KEY_PRIVATE_PATH, privateKey)) {
+                 SharedLib::Logger::critical("Config file found, but private key '{}' is missing!", KEY_PRIVATE_PATH);
+                 return 1;
+            }
+        } else {
+            // --- ЕТАП 3: РЕЄСТРАЦІЯ ЗА ТОКЕНОМ ---
+            SharedLib::Logger::warn("Agent not registered. Looking for enrollment token...");
+            
+            if (!agent_config.enrollment_token) {
+                SharedLib::Logger::critical("Enrollment token not found in '{}'. Cannot register.", AGENT_CONFIG_PATH);
+                return 1;
+            }
+            std::string token = *agent_config.enrollment_token;
+
+            std::string publicKey;
+            if (!SharedLib::CryptoHelper::generateRsaKeyPair(privateKey, publicKey)) {
+                SharedLib::Logger::critical("Could not generate RSA key pair!"); return 1;
+            }
+            if (!save_to_file(KEY_PRIVATE_PATH, privateKey) || !save_to_file(KEY_PUBLIC_PATH, publicKey)) {
+                 SharedLib::Logger::critical("Could not save key files!"); return 1;
+            }
+            SharedLib::Logger::info("New key pair generated and saved.");
+            
+            SharedLib::JsonSerializer::AgentRegisterRequest request;
+            request.hostname = "agent-007";
+            request.os_version = "Linux 22.04";
+            request.public_key_pem = publicKey;
+            
+            std::string url = app_config.getClientTargetUrl("/api/v1/register");
+            cpr::Header headers = {
+                {"Content-Type", "application/json"},
+                {"Authorization", "Bearer " + token}
+            };
+            
+            SharedLib::Logger::info("Sending registration request to {}", url);
+            cpr::Response r = cpr::Post(cpr::Url{url},
+                                        cpr::Body{SharedLib::JsonSerializer::serialize(request)},
+                                        headers,
+                                        cpr::VerifySsl{app_config.client_verify_ssl});
+
+            if (r.status_code == 200) {
+                auto responseOpt = SharedLib::JsonSerializer::deserializeRegisterResponse(r.text);
+                if (!responseOpt) {
+                    SharedLib::Logger::critical("Failed to parse registration response!"); return 1;
+                }
+                agent_id = responseOpt->agent_id;
+                
+                SharedLib::JsonSerializer::AgentConfig new_config;
+                new_config.agent_id = agent_id;
+                if (!save_to_file(AGENT_CONFIG_PATH, SharedLib::JsonSerializer::serialize(new_config))) {
+                    SharedLib::Logger::critical("Could not save agent config file '{}'!", AGENT_CONFIG_PATH);
+                    return 1;
+                }
+                SharedLib::Logger::info("Registration successful! Received Agent ID: {}. Config updated.", agent_id);
+            } else {
+                SharedLib::Logger::critical("Registration request failed! Status: {}, Body: {}", r.status_code, r.text);
+                return 1;
+            }
+        }
+
+        // --- ЕТАП 4: ОСНОВНИЙ ЦИКЛ РОБОТИ ---
+        SharedLib::Logger::info("Agent is running. Agent ID: {}. Main loop started.", agent_id);
+        // ...
+
     } catch (const std::exception& e) {
         SharedLib::Logger::critical("A critical error occurred in AgentApp: {}", e.what());
         return 1;

@@ -17,6 +17,10 @@ namespace SharedLib {
     class JsonSerializer {
     public:
         // --- Структури для реєстрації ---
+        struct EnrollmentTokenResponse {
+            std::string token;
+        };
+        
         struct AgentRegisterRequest {
             std::string hostname;
             std::string os_version;
@@ -43,6 +47,13 @@ namespace SharedLib {
             std::string message;
         };
 
+        // --- Структура для конфігураційного файлу агента ---
+        struct AgentConfig {
+            // optional, бо одне з полів завжди буде відсутнім
+            std::optional<long long> agent_id;
+            std::optional<std::string> enrollment_token;
+        };
+
         // --- Методи серіалізації/десеріалізації ---
         static std::string serialize(const AgentRegisterRequest& d);
         static std::optional<AgentRegisterRequest> deserializeRegisterRequest(const std::string& s);
@@ -51,6 +62,12 @@ namespace SharedLib {
         static std::string serialize(const FingerprintData& d);
         static std::string serialize(const FingerprintSubmitRequest& d);
         static std::optional<FingerprintSubmitRequest> deserializeFingerprintRequest(const std::string& s);
+
+        static std::string serialize(const EnrollmentTokenResponse& d);
+        static std::optional<AgentConfig> deserializeAgentConfig(const std::string& jsonString);
+
+        // НОВИЙ МЕТОД для серіалізації конфігу
+        static std::string serialize(const AgentConfig& config);
     };
 
 } // namespace SharedLib

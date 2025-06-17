@@ -50,6 +50,29 @@ namespace nlohmann {
     void from_json(const json& j, SharedLib::JsonSerializer::AgentRegisterResponse& res) {
         j.at("agent_id").get_to(res.agent_id);
     }
+
+    void to_json(json& j, const SharedLib::JsonSerializer::EnrollmentTokenResponse& res) {
+        j = json{{"token", res.token}};
+    }
+
+    // Для AgentConfig
+    void to_json(json& j, const SharedLib::JsonSerializer::AgentConfig& cfg) {
+        j = json{};
+        if (cfg.agent_id) {
+            j["agent_id"] = *cfg.agent_id;
+        }
+        if (cfg.enrollment_token) {
+            j["enrollment_token"] = *cfg.enrollment_token;
+        }
+    }
+    void from_json(const json& j, SharedLib::JsonSerializer::AgentConfig& cfg) {
+        if (j.contains("agent_id")) {
+            cfg.agent_id = j.at("agent_id").get<long long>();
+        }
+        if (j.contains("enrollment_token")) {
+            cfg.enrollment_token = j.at("enrollment_token").get<std::string>();
+        }
+    }
 }
 
 namespace SharedLib {
@@ -83,5 +106,25 @@ namespace SharedLib {
         }
     }
 
+    // Новий метод для відповіді з токеном
+    std::string JsonSerializer::serialize(const EnrollmentTokenResponse& data) {
+        return nlohmann::json(data).dump(4);
+    }
+
+    std::optional<JsonSerializer::AgentConfig> JsonSerializer::deserializeAgentConfig(const std::string& jsonString) {
+        try {
+            if (jsonString.empty()) {
+                return AgentConfig{}; // Повертаємо порожній конфіг, якщо файл порожній або відсутній
+            }
+            return nlohmann::json::parse(jsonString).get<AgentConfig>();
+        } catch (const nlohmann::json::exception& e) {
+            Logger::error("JSON deserialization failed for AgentConfig: {}", e.what());
+            return std::nullopt;
+        }
+    }
+
+    std::string JsonSerializer::serialize(const AgentConfig& config) {
+        return nlohmann::json(config).dump(4);
+    }
 
 } // namespace SharedLib
